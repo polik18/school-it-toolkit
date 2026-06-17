@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""
+school-ping-scan — 對清冊中的機器逐台 ping，快速看誰在線。
+Ping every host in the inventory to see what's online.
+
+用法 / Usage:
+  tools/mac-fleet/school-ping-scan --summary
+  tools/mac-fleet/school-ping-scan --group LAB-A
+"""
+import argparse
+import ipaddress
+import subprocess
+import sys
+from collections import Counter
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+
+def ping(ip):
+    try:
+        v = ipaddress.ip_address(ip).version
+    except ValueError:
+        return False
+    cmd = (["ping6"] if v == 6 else ["ping"]) + ["-c", "1", "-W", "1000", ip]
+    return subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Ping computers from the inventory.")
+    parser.add_argument("--group", action="append", default=[], help="只掃此清單（可重複）。")
+    parser.add_argument("--summary", action="store_true")
+    args = parser.parse_args()
+
+    cfg = schooltk.load_config()
+    groups = {g.lower() for g in args.group}
+    counts = Counter()
+    for row in schooltk.load_hosts(cfg):
+        group = row.get("list", "")
+        if groups and group.lower() not in groups:
+            continue
+        ip, name = row.get("ip", ""), row.get("name", "")
+        status = "ok" if (ip and ping(ip)) else "fail"
+        counts[("ALL", status)] += 1
+        counts[(group, status)] += 1
+        print(f"{group} {name} {ip} ping:{status}")
+
+    if args.summary:
+        print(f"\nSUMMARY ok={counts[('ALL', 'ok')]} fail={counts[('ALL', 'fail')]}")
+        for g in sorted({g for g, _ in counts if g != "ALL"}):
+            print(f"{g} ok={counts[(g, 'ok')]} fail={counts[(g, 'fail')]}")
+    return 0 if counts[("ALL", "fail")] == 0 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

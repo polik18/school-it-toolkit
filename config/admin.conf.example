@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────
+#  admin.conf — Mac 機房管理設定 / Mac fleet admin config
+#  複製成 admin.conf 後填入你學校的值（admin.conf 已被 .gitignore 忽略）
+#  Copy to admin.conf and fill in your school's values (admin.conf is gitignored).
+#  或直接執行：python3 setup/init-wizard.py 自動生成。
+# ─────────────────────────────────────────────────────────────
+
+# 你要在每台 Mac 上佈署/使用的統一管理員帳號名稱
+# The unified admin account you deploy/use on every Mac.
+ADMIN_USER="schooladmin"
+
+# 管理用 SSH 金鑰路徑（相對於 repo 根目錄；由精靈在本機生成，永不入庫）
+# Path to the management SSH key (relative to repo root; generated locally, never committed).
+SSH_KEY="keys/admin_ed25519"
+SSH_PUBLIC_KEY="keys/admin_ed25519.pub"
+
+# 機器清冊 CSV（相對於 repo 根目錄；含真實 IP/MAC，已被 .gitignore 忽略）
+# Machine inventory CSV (relative to repo root; contains real IP/MAC, gitignored).
+INVENTORY_CSV="inventory/inventory.csv"
+
+# 日誌輸出目錄
+LOG_DIR="logs"
+
+# SSH 連線預設逾時秒數（WiFi 機器建議 ≥30）
+# Default SSH connect timeout in seconds (use >=30 for WiFi hosts).
+SSH_TIMEOUT="12"
+
+# 受管 Mac 上由 bootstrap 建立的管理目錄
+# Management directory created on each managed Mac by bootstrap.
+REMOTE_MANAGEMENT_DIR="/Library/Management/SchoolMac"
+
+# 憑證檔位置（密碼類；已被 .gitignore 忽略）
+# Credentials file (passwords; gitignored).
+CREDENTIALS_FILE="config/credentials.env"

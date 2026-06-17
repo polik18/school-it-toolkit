@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────
+#  機密硬擋（Secret hard-block）— 這些絕對不可進入 Git 歷史
+#  These must NEVER be committed. Edit with extreme care.
+# ─────────────────────────────────────────────────────────────
+
+# SSH 私鑰／公鑰（所有金鑰一律本機生成、永不入庫）
+# SSH keys — always generated locally, never committed
+keys/
+*.pem
+*_ed25519
+*_ed25519.pub
+*_rsa
+*_rsa.pub
+id_*
+*.key
+*.ppk
+
+# 憑證與密碼（只保留 *.example 範本）
+# Credentials & secrets — only *.example templates are tracked
+*.env
+!*.env.example
+config/*.conf
+!config/*.conf.example
+secrets.*
+*.secret
+
+# 真實清冊（含真 IP/MAC/主機名）— 只保留 *.example
+# Real inventories (real IP/MAC/hostnames) — only *.example tracked
+inventory/*.csv
+inventory/*.json
+!inventory/*.example.csv
+!inventory/*.example.json
+tools/**/inventory/*.csv
+tools/**/inventory/*.json
+!tools/**/inventory/*.example.csv
+
+# 探測/稽核產出（真實網路資料）
+# Scan / audit outputs (real network data)
+reports/
+**/reports/
+**/mac-probes/
+**/switch-raw/
+*_running-config.txt
+*_arp.txt
+*_mac.txt
+*_lldp.txt
+
+# 產生的網站（會把全校拓撲烤進去）
+# Generated site (bakes in full topology)
+index.html
+site/
+
+# 本機個人化覆蓋
+# Local per-machine overrides
+*.local
+*.local.*
+hosts
+
+# 系統雜物
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/

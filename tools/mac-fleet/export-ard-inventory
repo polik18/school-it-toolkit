@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""
+export-ard-inventory — 從本機 Apple Remote Desktop 偏好檔匯出機器清冊。
+Export a machine inventory from the local Apple Remote Desktop preferences.
+
+預設匯出**所有** ARD 清單；可用 --list 只匯出特定清單（可重複）。
+產出寫到 config 設定的 INVENTORY_CSV（預設 inventory/inventory.csv，已 gitignored）。
+
+By default exports ALL ARD lists; use --list to restrict (repeatable).
+Output goes to the configured INVENTORY_CSV (gitignored).
+
+用法 / Usage:
+  tools/mac-fleet/export-ard-inventory
+  tools/mac-fleet/export-ard-inventory --list LAB-A --list GRADE-1
+"""
+import argparse
+import csv
+import ipaddress
+import json
+import plistlib
+import sys
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+ARD_PREFS = Path.home() / "Library/Containers/com.apple.RemoteDesktop/Data/Library/Preferences/com.apple.RemoteDesktop.plist"
+
+
+def decode_ip(value):
+    if not value:
+        return ""
+    if isinstance(value, str):
+        return value
+    try:
+        return str(ipaddress.IPv4Address(value))
+    except Exception:
+        return str(value)
+
+
+def best_ip(computer):
+    candidates = []
+    last_ip = decode_ip(computer.get("lastContactedAddress", {}).get("address"))
+    if last_ip and not last_ip.startswith("169.254."):
+        candidates.append(last_ip)
+    for addr in computer.get("networkAddresses", []):
+        ip = decode_ip(addr.get("address"))
+        if ip and not ip.startswith("169.254."):
+            candidates.append(ip)
+    direct = decode_ip(computer.get("networkAddress"))
+    if direct:
+        candidates.append(direct)
+    for ip in candidates:
+        try:
+            if ipaddress.ip_address(ip).version == 4:
+                return ip
+        except ValueError:
+            continue
+    return candidates[0] if candidates else ""
+
+
+def computer_id(computer):
+    for key in ("uniqueIdentifier", "uuid", "id"):
+        if computer.get(key):
+            return computer[key]
+    return ""
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Export machine inventory from Apple Remote Desktop.")
+    parser.add_argument("--list", action="append", default=[], help="只匯出此清單名（可重複）；省略則匯出全部。")
+    args = parser.parse_args()
+
+    cfg = schooltk.load_config()
+    if not ARD_PREFS.exists():
+        print(f"找不到 ARD 偏好檔：{ARD_PREFS}\n請先在本機開啟 Apple Remote Desktop 並建立清單。", file=sys.stderr)
+        return 2
+
+    with ARD_PREFS.open("rb") as fh:
+        data = plistlib.load(fh)
+
+    computers = {}
+    for computer in data.get("ComputerDatabase", []):
+        cid = computer_id(computer)
+        if cid:
+            computers[cid] = computer
+
+    wanted = {x for x in args.list}
+    rows, list_summary = [], []
+    for ard_list in data.get("ListDatabase", []):
+        list_name = ard_list.get("listName", "")
+        if wanted and list_name not in wanted:
+            continue
+        items = ard_list.get("items", [])
+        list_summary.append({"list": list_name, "uuid": ard_list.get("uuid", ""), "count": len(items)})
+        for index, cid in enumerate(items, 1):
+            c = computers.get(cid, {})
+            rows.append({
+                "list": list_name, "list_uuid": ard_list.get("uuid", ""), "index": index,
+                "computer_uuid": cid, "name": c.get("name", ""), "bonjour_name": c.get("BonjourName", ""),
+                "ip": best_ip(c), "hostname": c.get("hostname", ""),
+                "hardware_address": c.get("hardwareAddress", ""),
+                "model": c.get("computerModelDisplayString", c.get("machineModel", "")),
+                "machine_model_id": c.get("machineModelID", ""), "serial": c.get("machineSerialNumber", ""),
+                "os_version": c.get("OSVersion", ""), "ard_version": c.get("ardVersion", ""),
+                "last_contacted": str(c.get("lastContacted", "")),
+            })
+
+    fieldnames = ["list", "list_uuid", "index", "computer_uuid", "name", "bonjour_name", "ip",
+                  "hostname", "hardware_address", "model", "machine_model_id", "serial",
+                  "os_version", "ard_version", "last_contacted"]
+    csv_path = schooltk.resolve(cfg["INVENTORY_CSV"])
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    with csv_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    csv_path.with_suffix(".json").write_text(json.dumps(rows, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (csv_path.parent / "lists.json").write_text(json.dumps(list_summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    print(f"已匯出 {len(rows)} 台到 {csv_path}")
+    for item in sorted(list_summary, key=lambda x: x["list"]):
+        print(f"  {item['list']}: {item['count']}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

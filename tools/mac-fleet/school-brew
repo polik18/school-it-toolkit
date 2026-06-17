@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+school-brew — 全機房 Homebrew 管理：安裝、批量裝軟體、保持最新。
+Fleet-wide Homebrew management: install Homebrew, install formulae, keep everything up to date.
+
+設定全部來自 config/；本腳本不含任何學校專屬資料。
+All settings come from config/; this script contains no school-specific data.
+
+子指令 / Subcommands:
+  setup                         在缺少 Homebrew 的機器上非互動安裝（需 ADMIN_SUDO_PASS）
+  install <formula> [...]       批量 brew install
+  upgrade                       brew update && brew upgrade && brew cleanup（保持最新）
+  outdated                      列出每台機器待更新的套件
+
+範例 / Examples:
+  tools/mac-fleet/school-brew --group all setup
+  tools/mac-fleet/school-brew --group all install git wget
+  tools/mac-fleet/school-brew --group all upgrade
+  tools/mac-fleet/school-brew --group LAB-A outdated --dry-run
+"""
+import argparse
+import concurrent.futures
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+BREW_BIN = "/opt/homebrew/bin/brew"  # Apple Silicon 預設路徑
+
+
+def ssh_base(key, ip, user, timeout, tty=False):
+    cmd = ["ssh"]
+    if tty:
+        cmd.append("-tt")
+    cmd += [
+        "-i", str(key),
+        "-o", "BatchMode=yes",
+        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", f"ConnectTimeout={timeout}",
+        f"{user}@{ip}",
+    ]
+    return cmd
+
+
+def run_remote(key, ip, user, timeout, remote_cmd, tty=False, hard_timeout=None):
+    cmd = ssh_base(key, ip, user, timeout, tty=tty) + [remote_cmd]
+    try:
+        res = subprocess.run(cmd, text=True, capture_output=True, timeout=hard_timeout or (timeout + 30))
+        return res.returncode, res.stdout, res.stderr
+    except subprocess.TimeoutExpired:
+        return 124, "", "timeout"
+
+
+def do_setup(row, args, key, sudo_pass):
+    ip, name, user = row["ip"], row.get("name", ""), args.user
+    rc, out, _ = run_remote(key, ip, user, args.ssh_timeout,
+                            f"[ -f {BREW_BIN} ] && echo YES || echo NO")
+    if rc != 0:
+        return name, False, "SSH 連線失敗 / SSH failed"
+    if out.strip() == "YES":
+        return name, True, "Homebrew 已安裝 / already installed"
+    if not sudo_pass:
+        return name, False, "缺少 ADMIN_SUDO_PASS（安裝 Homebrew 需要）"
+    install = (
+        f"echo {shlex.quote(sudo_pass)} | sudo -S -v && "
+        'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL '
+        'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+    )
+    rc, out, err = run_remote(key, ip, user, args.ssh_timeout, install,
+                              tty=True, hard_timeout=args.install_timeout)
+    if rc != 0:
+        return name, False, f"安裝失敗 / install failed: {(out + err).strip().replace(chr(10), ' ')[:160]}"
+    return name, True, "Homebrew 安裝完成 / installed"
+
+
+def do_install(row, args, key, _sudo):
+    ip, name, user = row["ip"], row.get("name", ""), args.user
+    formulae = " ".join(shlex.quote(f) for f in args.formulae)
+    rc, out, err = run_remote(key, ip, user, args.ssh_timeout,
+                              f"{BREW_BIN} install {formulae}",
+                              hard_timeout=args.install_timeout)
+    if rc != 0:
+        return name, False, (out + err).strip().replace("\n", " ")[:160]
+    return name, True, f"已安裝 / installed: {' '.join(args.formulae)}"
+
+
+def do_upgrade(row, args, key, _sudo):
+    ip, name, user = row["ip"], row.get("name", ""), args.user
+    rc, out, err = run_remote(key, ip, user, args.ssh_timeout,
+                              f"{BREW_BIN} update && {BREW_BIN} upgrade && {BREW_BIN} cleanup",
+                              hard_timeout=args.install_timeout)
+    if rc != 0:
+        return name, False, (out + err).strip().replace("\n", " ")[:160]
+    tail = out.strip().splitlines()[-1] if out.strip() else "完成 / done"
+    return name, True, tail[:160]
+
+
+def do_outdated(row, args, key, _sudo):
+    ip, name, user = row["ip"], row.get("name", ""), args.user
+    rc, out, err = run_remote(key, ip, user, args.ssh_timeout,
+                              f"{BREW_BIN} update >/dev/null 2>&1; {BREW_BIN} outdated",
+                              hard_timeout=args.install_timeout)
+    if rc != 0:
+        return name, False, (out + err).strip().replace("\n", " ")[:160]
+    pkgs = [l for l in out.strip().splitlines() if l.strip()]
+    return name, True, ("全部最新 / up to date" if not pkgs else f"{len(pkgs)} 待更新: {', '.join(pkgs)}")
+
+
+ACTIONS = {"setup": do_setup, "install": do_install, "upgrade": do_upgrade, "outdated": do_outdated}
+
+
+def main():
+    cfg = schooltk.load_config()
+    parser = argparse.ArgumentParser(description="Fleet-wide Homebrew management.")
+    parser.add_argument("action", choices=ACTIONS.keys())
+    parser.add_argument("formulae", nargs="*", help="install 時要安裝的套件 / formulae for 'install'")
+    parser.add_argument("--group", help="清單名或 'all' / list name or 'all'")
+    parser.add_argument("--host", help="單機 / single host")
+    parser.add_argument("--user", default=cfg["ADMIN_USER"])
+    parser.add_argument("--workers", type=int, default=4, help="併發數（預設 4，避免網路壅塞）")
+    parser.add_argument("--ssh-timeout", type=int, default=int(cfg["SSH_TIMEOUT"]))
+    parser.add_argument("--install-timeout", type=int, default=900, help="安裝/升級硬逾時秒數")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    if args.action == "install" and not args.formulae:
+        parser.error("install 需要至少一個套件名 / 'install' needs at least one formula")
+    if not args.group and not args.host:
+        parser.error("請用 --group 或 --host 指定目標")
+
+    key = schooltk.ssh_key_path(cfg)
+    if not key.exists():
+        print(f"找不到 SSH 金鑰 {key}。請先執行 setup/init-wizard.py。", file=sys.stderr)
+        return 2
+
+    sudo_pass = schooltk.load_credentials(cfg).get("ADMIN_SUDO_PASS", "")
+    hosts = schooltk.select_hosts(schooltk.load_hosts(cfg), args.group, args.host)
+    if not hosts:
+        print("沒有符合且具備 IP 的主機。", file=sys.stderr)
+        return 2
+
+    print(f"目標 {len(hosts)} 台，動作：{args.action}")
+    if args.dry_run:
+        for r in hosts:
+            print(f"- {r.get('list')} | {r.get('name')} | {r.get('ip')}")
+        return 0
+
+    fn = ACTIONS[args.action]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as ex:
+        results = list(ex.map(lambda r: fn(r, args, key, sudo_pass), hosts))
+
+    ok = [r for r in results if r[1]]
+    bad = [r for r in results if not r[1]]
+    print("\n--- 結果 / Summary ---")
+    for name, success, msg in results:
+        print(f"[{'OK ' if success else 'FAIL'}] {name}: {msg}")
+    print(f"成功 {len(ok)} / 失敗 {len(bad)} / 共 {len(results)}")
+    return 0 if not bad else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

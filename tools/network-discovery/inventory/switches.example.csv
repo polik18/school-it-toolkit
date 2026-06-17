@@ -1,0 +1,3 @@
+device_name,management_ip,brand,model,location,login_method,snmp_enabled,lldp_enabled,cdp_enabled,uplink_port,note
+CORE-SW,192.0.2.2,ExampleVendor,CoreSwitch-48P,MDF,telnet,yes,yes,no,,核心交換器範例
+EDGE-SW-01,192.0.2.3,ExampleVendor,EdgeSwitch-24P,1F-IDF,ssh,yes,yes,no,Gi1/0/24,接入層交換器範例

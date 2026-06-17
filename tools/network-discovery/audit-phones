@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""
+audit-phones — 測試 IP 話機的網頁管理登入狀態（預設帳密是否仍可登入）。
+Audit IP phones' web admin login (whether default credentials still work).
+
+⚠️ 話機網頁路徑/編碼依廠牌不同。預設假設常見的 default.htm + 表單登入；
+   帳密從 config/network_credentials.env 讀（PHONE_USERNAME / PHONE_PASSWORD，
+   預設 admin/admin）。請依你的話機型號調整 LOGIN_PATH / 成功判斷字串。
+
+用法 / Usage:
+  tools/network-discovery/audit-phones
+"""
+import csv
+import socket
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+NETDIR = schooltk.ROOT / "tools" / "network-discovery"
+PHONES_CSV = NETDIR / "inventory" / "ip_phones.csv"
+
+LOGIN_PATH = "/default.htm"     # 依廠牌調整
+SUCCESS_MARKERS = ("status.htm", "replace")
+PAGE_ENCODING = "big5"          # 部分話機網頁用 big5；可改 utf-8
+
+
+def test_login(ip, user, pwd):
+    url = f"http://{ip}{LOGIN_PATH}"
+    data = urllib.parse.urlencode({"login_id": user, "login_pwd": pwd}).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.4)
+        s.connect((ip, 80))
+        s.close()
+        with urllib.request.urlopen(req, timeout=1.5) as r:
+            body = r.read().decode(PAGE_ENCODING, errors="ignore")
+            return "SUCCESS" if any(m in body for m in SUCCESS_MARKERS) else "REJECTED"
+    except socket.timeout:
+        return "TIMEOUT"
+    except ConnectionRefusedError:
+        return "REFUSED"
+    except Exception:
+        return "ERROR"
+
+
+def main():
+    if not PHONES_CSV.exists():
+        print(f"找不到 {PHONES_CSV}。請從 ip_phones.example.csv 複製並填入。", file=sys.stderr)
+        return 2
+    nc = schooltk.load_network_credentials()
+    user = nc.get("PHONE_USERNAME", "admin")
+    pwd = nc.get("PHONE_PASSWORD", "admin")
+
+    with PHONES_CSV.open(newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        fieldnames = reader.fieldnames
+        phones = list(reader)
+
+    ok = rej = off = 0
+    for p in phones:
+        ip = (p.get("ip") or "").strip()
+        if not ip:
+            p["note"] = "未偵測到 IP (離線)"
+            p["pbx_status"] = "Unregistered"
+            continue
+        status = test_login(ip, user, pwd)
+        if status == "SUCCESS":
+            p["note"] = f"Web 登入成功（{user}/{pwd} 仍可用 🟢）"
+            p["pbx_status"] = "Registered"; ok += 1
+            print(f"  [+] {ip} ext {p.get('extension')} - 預設帳密仍可登入")
+        elif status == "REJECTED":
+            p["note"] = "Web 密碼已變更（預設帳密被拒 ✅）"
+            p["pbx_status"] = "Registered"; rej += 1
+            print(f"  [-] {ip} ext {p.get('extension')} - 帳密被拒（較安全）")
+        else:
+            p["note"] = f"Web 無法連線（{status}）"
+            p["pbx_status"] = "Unregistered"; off += 1
+
+    with PHONES_CSV.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=fieldnames)
+        w.writeheader()
+        w.writerows(phones)
+    print(f"\n完成。預設帳密可登入={ok}（風險）｜已改密碼={rej}｜離線/錯誤={off}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

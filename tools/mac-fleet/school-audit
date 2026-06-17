@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""
+school-audit — 稽核每台機器是否「真的被管到」：SSH 可登入 + ARD 連接埠可達。
+Audit whether each Mac is truly managed: SSH login works AND ARD ports reachable.
+
+重點（見 pitfalls #10）：在 ARD 清單裡 ≠ 管得動。本工具用實際 SSH + TCP 3283/5900
+作為證據，產出報表到 reports/（已 gitignored，不會上 GitHub）。
+
+用法 / Usage:
+  tools/mac-fleet/school-audit
+  tools/mac-fleet/school-audit --group LAB-A --no-write
+"""
+import argparse
+import concurrent.futures
+import csv
+import datetime as dt
+import ipaddress
+import socket
+import subprocess
+import sys
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+
+def run(cmd, timeout):
+    try:
+        return subprocess.run(cmd, text=True, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(cmd, 124, stdout="", stderr=f"TIMEOUT {timeout}s")
+
+
+def ping_ok(ip, timeout):
+    if not ip:
+        return False
+    try:
+        v = ipaddress.ip_address(ip).version
+    except ValueError:
+        return False
+    cmd = (["ping6"] if v == 6 else ["ping"]) + ["-c", "1", "-W", str(int(timeout * 1000)), ip]
+    return run(cmd, timeout + 1).returncode == 0
+
+
+def tcp_open(ip, port, timeout):
+    if not ip:
+        return False
+    try:
+        with socket.create_connection((ip, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def ssh_probe(ip, user, key, timeout):
+    if not ip or not key.exists():
+        return False, ""
+    cmd = ["ssh", "-n", "-i", str(key), "-o", "BatchMode=yes",
+           "-o", "StrictHostKeyChecking=accept-new", "-o", f"ConnectTimeout={timeout}",
+           f"{user}@{ip}", "hostname"]
+    res = run(cmd, timeout + 5)
+    if res.returncode != 0:
+        return False, ""
+    return True, res.stdout.strip()
+
+
+def audit_one(row, args, user, key):
+    ip = row.get("ip", "")
+    ping = ping_ok(ip, args.ping_timeout)
+    p22 = tcp_open(ip, 22, args.tcp_timeout)
+    ard = tcp_open(ip, 3283, args.tcp_timeout)
+    vnc = tcp_open(ip, 5900, args.tcp_timeout)
+    ssh_ok, ssh_host = ssh_probe(ip, user, key, args.ssh_timeout)
+    ard_reachable = ard and vnc
+    return {
+        "list": row.get("list", ""), "name": row.get("name", ""), "ip": ip,
+        "ping": "OK" if ping else "NO", "tcp22": "OPEN" if p22 else "NO",
+        "ard3283": "OPEN" if ard else "NO", "vnc5900": "OPEN" if vnc else "NO",
+        "admin_ssh": "OK" if ssh_ok else "NO", "ssh_hostname": ssh_host,
+        "ard_reachable_ports": "OK" if ard_reachable else "NO",
+        "fully_managed": "YES" if (ssh_ok and ard_reachable) else "NO",
+        "model": row.get("model", ""), "os_version": row.get("os_version", ""),
+    }
+
+
+def main():
+    cfg = schooltk.load_config()
+    parser = argparse.ArgumentParser(description="Audit real manageability (SSH + ARD reachability).")
+    parser.add_argument("--group", action="append", default=[])
+    parser.add_argument("--user", default=cfg["ADMIN_USER"])
+    parser.add_argument("--workers", type=int, default=16)
+    parser.add_argument("--ping-timeout", type=float, default=1.0)
+    parser.add_argument("--tcp-timeout", type=float, default=2.0)
+    parser.add_argument("--ssh-timeout", type=int, default=4)
+    parser.add_argument("--no-write", action="store_true")
+    args = parser.parse_args()
+
+    key = schooltk.ssh_key_path(cfg)
+    groups = {g for g in args.group}
+    rows = [r for r in schooltk.load_hosts(cfg) if not groups or r.get("list") in groups]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as ex:
+        results = list(ex.map(lambda r: audit_one(r, args, args.user, key), rows))
+
+    total = len(results)
+    managed = sum(1 for r in results if r["fully_managed"] == "YES")
+    ssh_ok = sum(1 for r in results if r["admin_ssh"] == "OK")
+    print(f"總計 {total}｜SSH OK {ssh_ok}｜完整列管 {managed}")
+    print("\n未完整列管：")
+    for r in results:
+        if r["fully_managed"] != "YES":
+            print(f"- {r['list']} {r['name']} {r['ip']} ping={r['ping']} ssh={r['admin_ssh']} "
+                  f"ard3283={r['ard3283']} vnc5900={r['vnc5900']}")
+
+    if not args.no_write:
+        out_dir = schooltk.resolve("reports")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        path = out_dir / f"management_audit_{stamp}.csv"
+        with path.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=list(results[0].keys()) if results else [])
+            w.writeheader()
+            w.writerows(results)
+        print(f"\n報表已寫入 {path}（reports/ 已 gitignored）")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

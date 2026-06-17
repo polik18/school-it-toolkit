@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""
+deploy-aider — 在機房各機安裝 aider，並佈署一支指向「你的本地 LLM 伺服器」的啟動器。
+Install aider on the fleet and deploy an `aider-local` launcher pointing at your local LLM.
+
+去敏設計：端點/金鑰/模型/目標帳號全部來自 config/local-ai.env（gitignored），
+啟動器由 remote/aider-local.template.sh 在佈署時渲染——**repo 內不含任何端點或金鑰**。
+
+用法 / Usage:
+  tools/local-ai/deploy-aider --group all
+  tools/local-ai/deploy-aider --host LAB-A-01
+"""
+import argparse
+import concurrent.futures
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+TEMPLATE = Path(__file__).resolve().parent / "remote" / "aider-local.template.sh"
+
+
+def render_launcher(env):
+    text = TEMPLATE.read_text(encoding="utf-8")
+    return (text
+            .replace("__OPENAI_API_BASE__", env.get("LOCAL_LLM_API_BASE", ""))
+            .replace("__OPENAI_API_KEY__", env.get("LOCAL_LLM_API_KEY", ""))
+            .replace("__MODEL__", env.get("LOCAL_LLM_MODEL", "")))
+
+
+def deploy_one(row, args, key, user, target_user, launcher_path):
+    ip, name = row.get("ip", ""), row.get("name", "")
+    if not ip:
+        return name, False, "無 IP"
+    base = ["-i", str(key), "-o", "BatchMode=yes",
+            "-o", "StrictHostKeyChecking=accept-new", "-o", f"ConnectTimeout={args.ssh_timeout}"]
+
+    # 1) 以目標帳號安裝 aider-chat
+    pip = ["ssh", *base, f"{user}@{ip}",
+           f"sudo -u {target_user} -H /usr/local/bin/pip install aider-chat"]
+    try:
+        r = subprocess.run(pip, text=True, capture_output=True, timeout=args.pip_timeout)
+    except subprocess.TimeoutExpired:
+        return name, False, "pip 逾時"
+    if r.returncode != 0:
+        return name, False, f"pip 失敗: {(r.stdout + r.stderr).strip().replace(chr(10), ' ')[:160]}"
+
+    # 2) scp 渲染後的啟動器
+    scp = ["scp", *base, str(launcher_path), f"{user}@{ip}:/tmp/aider-local"]
+    try:
+        r = subprocess.run(scp, text=True, capture_output=True, timeout=args.ssh_timeout + 10)
+    except subprocess.TimeoutExpired:
+        return name, False, "scp 逾時"
+    if r.returncode != 0:
+        return name, False, f"scp 失敗: {(r.stdout + r.stderr).strip().replace(chr(10), ' ')[:160]}"
+
+    # 3) 安裝到 /usr/local/bin/aider-local
+    install = ("sudo mkdir -p /usr/local/bin && "
+               "sudo cp /tmp/aider-local /usr/local/bin/aider-local && "
+               "sudo chmod +x /usr/local/bin/aider-local && "
+               "sudo chown root:wheel /usr/local/bin/aider-local && rm -f /tmp/aider-local")
+    ssh = ["ssh", *base, f"{user}@{ip}", install]
+    try:
+        r = subprocess.run(ssh, text=True, capture_output=True, timeout=args.ssh_timeout + 10)
+    except subprocess.TimeoutExpired:
+        return name, False, "安裝逾時"
+    if r.returncode != 0:
+        return name, False, f"安裝失敗: {(r.stdout + r.stderr).strip().replace(chr(10), ' ')[:160]}"
+    return name, True, "aider + aider-local 佈署完成"
+
+
+def main():
+    cfg = schooltk.load_config()
+    parser = argparse.ArgumentParser(description="Deploy aider + local launcher to the fleet.")
+    parser.add_argument("--group")
+    parser.add_argument("--host")
+    parser.add_argument("--user", default=cfg["ADMIN_USER"])
+    parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--ssh-timeout", type=int, default=8)
+    parser.add_argument("--pip-timeout", type=int, default=180)
+    args = parser.parse_args()
+    if not args.group and not args.host:
+        parser.error("請用 --group 或 --host 指定目標")
+
+    env = schooltk.load_env("local-ai.env")
+    if not env.get("LOCAL_LLM_API_BASE") or not env.get("LOCAL_LLM_MODEL"):
+        print("缺少 config/local-ai.env 的 LOCAL_LLM_API_BASE / LOCAL_LLM_MODEL。", file=sys.stderr)
+        return 2
+    target_user = env.get("TARGET_USER", "user")
+    key = schooltk.ssh_key_path(cfg)
+    if not key.exists():
+        print(f"找不到金鑰 {key}，請先跑 setup/init-wizard.py。", file=sys.stderr)
+        return 2
+
+    hosts = schooltk.select_hosts(schooltk.load_hosts(cfg), args.group, args.host)
+    if not hosts:
+        print("沒有符合的主機。", file=sys.stderr)
+        return 2
+
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sh") as tf:
+        tf.write(render_launcher(env))
+        launcher = tf.name
+
+    print(f"佈署 aider 到 {len(hosts)} 台（目標帳號 {target_user}）...")
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as ex:
+            results = list(ex.map(
+                lambda r: deploy_one(r, args, key, args.user, target_user, launcher), hosts))
+    finally:
+        Path(launcher).unlink(missing_ok=True)
+
+    for name, ok, msg in results:
+        print(f"[{'OK ' if ok else 'FAIL'}] {name}: {msg}")
+    bad = [r for r in results if not r[1]]
+    print(f"成功 {len(results) - len(bad)} / 失敗 {len(bad)} / 共 {len(results)}")
+    return 0 if not bad else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

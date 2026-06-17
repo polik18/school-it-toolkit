@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""
+school-ssh — 對清冊中的 Mac 批量執行 SSH 指令。
+Run an SSH command across the Macs in your inventory.
+
+設定全部來自 config/admin.conf 與 inventory/inventory.csv —— 本腳本不含任何
+學校專屬資料。All settings come from config; this script contains no school data.
+
+範例 / Examples:
+  tools/mac-fleet/school-ssh --group all -- uptime
+  tools/mac-fleet/school-ssh --group LAB-A -- "sw_vers -productVersion"
+  tools/mac-fleet/school-ssh --host LAB-A-01 -- whoami
+"""
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+# 定位並載入共用設定模組（往上找含 lib/schooltk.py 的目錄）
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+
+def main():
+    cfg = schooltk.load_config()
+    parser = argparse.ArgumentParser(description="Run an SSH command across school Mac inventory hosts.")
+    parser.add_argument("--group", help="清單名（ARD list），或 'all'。Inventory list name, or 'all'.")
+    parser.add_argument("--host", help="單機：name / bonjour / hostname / IP。Single host.")
+    parser.add_argument("--user", default=cfg["ADMIN_USER"])
+    parser.add_argument("--timeout", default=cfg["SSH_TIMEOUT"])
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+
+    if not args.command or args.command[0] != "--":
+        parser.error("遠端指令請放在 -- 之後，例如：school-ssh --group all -- uptime")
+    command = args.command[1:]
+    if not command:
+        parser.error("缺少遠端指令 / Missing remote command")
+    if not args.group and not args.host:
+        parser.error("請用 --group 或 --host 指定目標 / Specify --group or --host")
+
+    key = schooltk.ssh_key_path(cfg)
+    if not key.exists():
+        print(f"找不到 SSH 金鑰 {key}。請先執行 setup/init-wizard.py。", file=sys.stderr)
+        return 2
+
+    hosts = schooltk.select_hosts(schooltk.load_hosts(cfg), args.group, args.host)
+    if not hosts:
+        print("沒有符合且具備 IP 的主機 / No matching hosts with IP.", file=sys.stderr)
+        return 2
+
+    failures = 0
+    for row in hosts:
+        label = row.get("name") or row["ip"]
+        ssh_cmd = [
+            "ssh",
+            "-i", str(key),
+            "-o", "BatchMode=yes",
+            "-o", "StrictHostKeyChecking=accept-new",
+            "-o", f"ConnectTimeout={args.timeout}",
+            f"{args.user}@{row['ip']}",
+            " ".join(command),
+        ]
+        print(f"== {label} {row['ip']} ==")
+        result = subprocess.run(ssh_cmd, text=True, capture_output=True)
+        if result.stdout:
+            print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, end="", file=sys.stderr)
+        if result.returncode != 0:
+            failures += 1
+            print(f"[{label}] exit {result.returncode}", file=sys.stderr)
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

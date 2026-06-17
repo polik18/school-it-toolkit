@@ -1,0 +1,3 @@
+asset_id,extension,brand,model,mac,ip,location,switch,port,vlan,pbx_status,web_url,ssh_supported,admin_method,class_id,name,speed_dial,source,note
+PH-0001,1001,ExampleVendor,IP-Phone-X1,02:00:00:00:01:01,203.0.113.11,A-1F-101,EDGE-SW-01,Gi1/0/1,30,Registered,http://203.0.113.11,no,web,A101,一年一班分機,,example,範例
+PH-0002,1002,ExampleVendor,IP-Phone-X1,02:00:00:00:01:02,203.0.113.12,A-1F-102,EDGE-SW-01,Gi1/0/2,30,Registered,http://203.0.113.12,no,web,A102,一年二班分機,,example,範例
