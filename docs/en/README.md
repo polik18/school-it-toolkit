@@ -1,8 +1,12 @@
 # 🏫 School IT Toolkit — English guide
 
+<p align="center">
+  <img src="../assets/banner.png" alt="School IT Toolkit — manage a fleet of school Macs: SSH session management, Mac inventory, fleet-wide Homebrew, network topology, switch port map, Apple Remote Desktop and automation" width="100%">
+</p>
+
 Battle-tested probing, fleet-management, and **hard-won pitfall** know-how from a
-school IT admin — packaged so any school can adopt it fast. This toolkit ships
-**methods, not data**.
+school IT admin — packaged so any school can adopt it fast. This toolkit
+**shares methods, not data** — given back to the community for free, not sold.
 
 > The most complete documentation is in Traditional Chinese under [`../zh-TW/`](../zh-TW/).
 > The two flagship guides and this overview are available in English.
