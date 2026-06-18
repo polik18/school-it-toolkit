@@ -1,7 +1,7 @@
 # 🏫 School IT Toolkit — English guide
 
 <p align="center">
-  <img src="../assets/banner.png" alt="School IT Toolkit — manage a fleet of school Macs: SSH session management, Mac inventory, fleet-wide Homebrew, network topology, switch port map, Apple Remote Desktop and automation" width="100%">
+  <img src="../assets/banner-en.png" alt="School IT Toolkit — Taiwan School IT Management Toolkit: SSH session management, Mac inventory, fleet-wide Homebrew, network topology, switch port map, Apple Remote Desktop and automation. Practical, Automated, Standardized." width="100%">
 </p>
 
 Battle-tested probing, fleet-management, and **hard-won pitfall** know-how from a
