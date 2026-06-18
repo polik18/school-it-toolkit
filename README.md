@@ -12,9 +12,9 @@
 
 ## ✨ 這是什麼 / What is this
 
-不同學校的網段、交換器廠牌、帳號命名、電腦數量都不同。本工具包**不賣資料、只賣方法**——把可重複使用的腳本、SOP，以及最寶貴的「踩過的雷」變成別校也能直接執行的有效流程。
+不同學校的網段、交換器廠牌、帳號命名、電腦數量都不同。本工具包**分享的是方法，不是資料**——把可重複使用的腳本、SOP，以及最寶貴的「踩過的雷」整理成別校也能直接執行的有效流程，免費回饋社群。
 
-Every school's subnet, switch vendor, account naming, and fleet size differ. This toolkit ships **methods, not data** — reusable scripts, SOPs, and the pitfalls we already hit, turned into procedures other schools can run directly.
+Every school's subnet, switch vendor, account naming, and fleet size differ. This toolkit **shares methods, not data** — reusable scripts, SOPs, and the pitfalls we already hit, turned into procedures other schools can run directly. It's given back to the community for free, not sold.
 
 真正的目標不只是「跑腳本」，而是把 Mac、交換器、IP 話機、連接埠、VLAN 與拓撲串成**一張看得見的校園網管地圖**——讓原本只存在資深系管腦中的隱形基礎設施，變成**可查、可修、可交接**的透明系統。
 
@@ -50,7 +50,8 @@ The real goal isn't just "running scripts" — it's stitching Macs, switches, IP
 3. **雙邊對照** — 比對 **ARP** 與 VLAN 是否一致，判斷是設備設定、線路、port、還是 VLAN 問題。
 4. **定位根因** — 範圍縮到單一環節後再動手修，避免亂槍打鳥。
 
-> 這正是招牌功能 ③「Mac × 交換器 雙邊對照」的日常用法。詳見 [`docs/zh-TW/network-discovery.md`](docs/zh-TW/network-discovery.md)。
+> 這正是招牌功能 ③「Mac × 交換器 雙邊對照」的日常用法。
+> 📖 **完整 end-to-end 圖文教學**（含分流決策表與各種故障分支）見 [`docs/zh-TW/network-discovery.md` §3 實戰教學](docs/zh-TW/network-discovery.md#3-實戰教學老師說電腦不能上網end-to-end)。
 
 ---
 
@@ -71,15 +72,13 @@ Start with **one management Mac, three test Macs, and one test switch**; validat
 | 學期初 / Term start | 全面盤點、新機納管、清冊校正 |
 | 假期 / Breaks | 大型升級、重佈署、交接文件更新 |
 
-> 與 MDM 的關係：本工具**聚焦現場任務執行與網路可視性**，MDM 聚焦政策與合規，兩者可互補。
-
 ---
 
 ## 🎯 適合什麼樣的校園環境 / Who is this for
 
-本工具包是為**沒有 MDM、靠人力管理一批 Mac** 的學校量身打造的。若你的環境符合以下多數條件，會非常合用：
+本工具包最初是為**靠人力管理一批 Mac** 的學校打造的，但它做的事——**網路拓撲可視化、Mac × 交換器雙邊對照、現場故障排查**——是端點管理／MDM 通常涵蓋不到的，所以**就算你已經有 MDM，網路盤點這一塊仍然用得上**。若你的環境符合以下多數條件，會非常合用：
 
-This toolkit is built for schools that manage a fleet of Macs **by hand, without an MDM**. It fits best if most of the following are true:
+This toolkit was originally built for schools managing a fleet of Macs **by hand**, but what it does — **network-topology visibility, Mac × switch correlation, and on-site fault triage** — is generally outside what endpoint/MDM tools cover, so the network-discovery side **stays useful even if you already run an MDM**. It fits best if most of the following are true:
 
 **✅ 適合 / A good fit**
 - 機房／教室有一批 **macOS 電腦**（Mac mini、iMac 等），尤以 **Apple Silicon** 為主（部分功能假設 `/opt/homebrew` 路徑）。
@@ -91,8 +90,7 @@ This toolkit is built for schools that manage a fleet of Macs **by hand, without
 - 你對這些機器有**合法管理權限**（本工具會進行 SSH／sudo／改密碼等操作）。
 
 **⚠️ 不太適合 / Probably not for you**
-- 已導入 **MDM（Jamf 等）**：大多數任務交給 MDM 更合適，本工具價值有限。
-- 管理的是 **Windows／ChromeOS** 機器：本工具**僅限 macOS**。
+- 管理的是 **Windows／ChromeOS** 機器：本工具的 Mac 納管部分**僅限 macOS**（網路盤點部分仍可用）。
 - 你對目標機器**沒有管理授權**：請勿使用。
 
 ---
