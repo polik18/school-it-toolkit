@@ -5,6 +5,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+> 📖 **完整介紹文章 / Full write-up**：[一位學校系管師如何讓校園資訊環境「終於看得見」](https://jamespolik.pixnet.net/blog/posts/908160329453493278)
+> — 從設計理念、實戰排查案例到導入步驟的完整敘事，新訪客建議先讀這篇。
+
 ---
 
 ## ✨ 這是什麼 / What is this
@@ -13,11 +16,17 @@
 
 Every school's subnet, switch vendor, account naming, and fleet size differ. This toolkit ships **methods, not data** — reusable scripts, SOPs, and the pitfalls we already hit, turned into procedures other schools can run directly.
 
+真正的目標不只是「跑腳本」，而是把 Mac、交換器、IP 話機、連接埠、VLAN 與拓撲串成**一張看得見的校園網管地圖**——讓原本只存在資深系管腦中的隱形基礎設施，變成**可查、可修、可交接**的透明系統。
+
+The real goal isn't just "running scripts" — it's stitching Macs, switches, IP phones, ports, VLANs, and topology into **one visible map of the campus network**, turning infrastructure that used to live only in a veteran admin's head into a system that is **queryable, fixable, and handover-ready**.
+
 ### ⭐ 招牌功能 / Flagship capabilities
 1. **避雷 + 透過 ARD 納管 SSH** — 用 Apple Remote Desktop 打通並批量佈署 SSH 金鑰，繞過 TCC、kickstart、AppleScript 逾時等地雷。
    *Onboard SSH across the fleet via Apple Remote Desktop, dodging the TCC / kickstart / AppleScript-timeout landmines.*
 2. **Homebrew 批量安裝並保持最新** — 全機房一鍵安裝軟體並維持在最新狀態。
    *Install software fleet-wide with Homebrew and keep it continuously up to date.*
+3. **Mac × 交換器 雙邊對照定位故障** — 同時掌握端點（Mac 的網路狀態、MAC、ARP）與網路側（交換器 port、MAC table、VLAN），交叉比對快速縮小「不能上網」這類問題的根因。
+   *Pinpoint faults by correlating both sides — the endpoint (Mac network state, MAC, ARP) and the network (switch port, MAC table, VLAN) — to rapidly narrow down "can't get online" type problems.*
 
 ---
 
@@ -29,6 +38,40 @@ Every school's subnet, switch vendor, account naming, and fleet size differ. Thi
 | `tools/network-discovery` | 交換器探測、LLDP 拓撲、連接埠對應 |
 | `tools/ip-phones` | 網路電話盤點與稽核 |
 | `tools/local-ai` | 本地 AI 工作站（oMLX / aider）部署 |
+
+---
+
+## 🔭 實戰情境：「老師說電腦不能上網」/ In action: "the teacher says it can't get online"
+
+工具的價值在真實排查時最明顯。面對最常見的求助，可用系統化流程逐步縮小範圍，而不是靠猜：
+
+1. **Mac 端** — SSH 進該機，查網路狀態、IP、取得網卡 **MAC address**。
+2. **交換器端** — 用 MAC 在交換器 **MAC table** 反查它接在哪台交換器、哪個 **port**，看 interface 是否 up。
+3. **雙邊對照** — 比對 **ARP** 與 VLAN 是否一致，判斷是設備設定、線路、port、還是 VLAN 問題。
+4. **定位根因** — 範圍縮到單一環節後再動手修，避免亂槍打鳥。
+
+> 這正是招牌功能 ③「Mac × 交換器 雙邊對照」的日常用法。詳見 [`docs/zh-TW/network-discovery.md`](docs/zh-TW/network-discovery.md)。
+
+---
+
+## 🧭 導入建議與維運節奏 / Rollout & operating cadence
+
+**小規模試點再推廣 / Start small, then scale**
+建議從 **1 台管理端 Mac ＋ 3 台測試 Mac ＋ 1 台測試交換器** 開始，驗證納管、採集與排查流程順暢後，再逐步擴及全校。
+Start with **one management Mac, three test Macs, and one test switch**; validate onboarding, collection, and troubleshooting before rolling out fleet-wide.
+
+**固定維運節奏 / A steady cadence**
+別等出事才管。建立固定排程能避免問題累積：
+
+| 頻率 | 建議動作 |
+|------|----------|
+| 每日 / Daily | 處理求助、看是否有異常設備 |
+| 每週 / Weekly | 跑 audit 找未完整納管的機器、檢查更新狀態 |
+| 每月 / Monthly | Homebrew 批量更新、重新採集交換器拓撲對照清冊 |
+| 學期初 / Term start | 全面盤點、新機納管、清冊校正 |
+| 假期 / Breaks | 大型升級、重佈署、交接文件更新 |
+
+> 與 MDM 的關係：本工具**聚焦現場任務執行與網路可視性**，MDM 聚焦政策與合規，兩者可互補。
 
 ---
 
