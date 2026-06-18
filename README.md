@@ -1,5 +1,9 @@
 # 🏫 School IT Toolkit ｜ 學校資訊系統管理工具包
 
+<p align="center">
+  <img src="docs/assets/banner.png" alt="校園系管術 — 臺灣學校 IT 管理工具箱：SSH 連線管理、Mac 設備清單、Homebrew 套件管理、網路拓撲、交換器埠口狀態、Apple Remote Desktop 遠端管理與自動化任務" width="100%">
+</p>
+
 > 用一位學校系管師的實戰探測、納管與**踩雷經驗**，淬煉成可被任何學校快速套用的開源工具包。
 > Battle-tested probing, fleet-management, and **hard-won pitfall** know-how from a school IT admin — packaged so any school can adopt it fast.
 
