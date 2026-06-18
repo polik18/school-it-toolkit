@@ -149,3 +149,12 @@ This repo is designed so **no real credentials, keys, inventories, or scan outpu
 
 源自台灣某國小的實際系統管理工作，將踩雷經驗回饋給社群。
 Born from real-world IT operations at a Taiwanese elementary school, giving pitfall experience back to the community.
+
+---
+
+<sub>
+
+**關鍵字 / Keywords**：學校 IT 管理、校園資訊組長工具、Mac 機房批量管理、電腦教室管理、Apple Remote Desktop (ARD) 批次納管、SSH 批量管理 macOS、Homebrew 大量佈署、交換器盤點、LLDP 網路拓撲、VLAN／連接埠對應、網路電話盤點、本地 AI 工作站、免 MDM 管理 Mac、無 MDM 校園、IT 交接文件。
+School IT management · manage a fleet of Macs without an MDM · macOS fleet management · Apple Remote Desktop SSH onboarding · bulk Homebrew deployment · network discovery · switch / LLDP topology mapping · VLAN & port mapping · IP phone audit · classroom / lab Mac administration · sysadmin toolkit for schools · K-12 IT.
+
+</sub>
