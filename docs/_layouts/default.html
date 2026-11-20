@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ site.lang | default: 'zh-TW' }}">
+<html lang="{{ page.lang | default: site.lang | default: 'zh-TW' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -62,7 +62,7 @@
 
   <div class="layout{% if is_home %} layout-home{% endif %}">
     <main id="content" class="doc" tabindex="-1">
-      {{ content }}
+      {{ content | replace: '<h1', '<h2' | replace: '</h1>', '</h2>' }}
     </main>
     {% unless is_home %}
     <aside class="toc" aria-label="本頁目錄">

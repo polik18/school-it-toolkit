@@ -1,3 +1,8 @@
+---
+title: "Homebrew 批量安裝並保持最新"
+description: "SSH 納管完成後，用 school-brew 一行指令替全機房 Mac 批次安裝 Homebrew 與常用軟體並保持最新版，解決教室電腦版本散亂與資安風險。"
+---
+
 # ⭐ Homebrew 批量安裝並保持最新
 
 > 納管完成（SSH 已通）後的第一件大事：讓全機房**裝得到軟體、且永遠是最新版**。

@@ -1,3 +1,10 @@
+---
+title: "Fleet-wide Homebrew: install & keep up to date"
+description: "After SSH onboarding, use school-brew to install Homebrew and common software across every school Mac with one command and keep the whole fleet up to date."
+lang: en
+image: /assets/social-preview-en.png
+---
+
 # ⭐ Fleet-wide Homebrew: install & keep up to date
 
 > First big task after onboarding (SSH works): make the whole fleet able to install

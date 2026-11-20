@@ -1,3 +1,8 @@
+---
+title: "轉接器設定與自行擴充"
+description: "說明 School IT Toolkit 各類設備轉接器（交換器、Wi-Fi、防火牆、DNS／DHCP、Mac 等）如何在 site.toml 設定、用 mock 演練，以及自行撰寫新轉接器的步驟。"
+---
+
 # 轉接器設定與自行擴充
 
 每一類設備在 `site.toml` 用一個 `[adapters.<類別>]` 區段設定。任何類別都可以設 `driver = "mock"` 演練。

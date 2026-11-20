@@ -1,3 +1,8 @@
+---
+title: "避雷＋透過 ARD 納管 SSH"
+description: "沒有 MDM 的校園機房，如何用 Apple Remote Desktop 當跳板，把全部 Mac 一次打通為 SSH 金鑰免密碼管理，並避開一路上的各種地雷。"
+---
+
 # ⭐ 避雷 + 透過 ARD 納管 SSH
 
 > 在沒有 MDM、機器分散在各教室的環境，如何用 **Apple Remote Desktop (ARD)** 當跳板，

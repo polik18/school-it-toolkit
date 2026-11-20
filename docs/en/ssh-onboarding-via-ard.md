@@ -1,3 +1,10 @@
+---
+title: "Onboard SSH across the fleet via Apple Remote Desktop"
+description: "No MDM? Use Apple Remote Desktop as a bootstrap channel to turn every classroom Mac into passwordless SSH-key management, while avoiding the common pitfalls."
+lang: en
+image: /assets/social-preview-en.png
+---
+
 # ⭐ Onboard SSH across the fleet via Apple Remote Desktop
 
 > In an environment with no MDM and Macs scattered across classrooms, use **Apple

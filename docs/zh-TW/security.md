@@ -1,3 +1,8 @@
+---
+title: "資安說明與威脅模型"
+description: "School IT Toolkit 的資安設計與威脅模型：防止洩漏學校資訊與工具或 AI 改壞網路，包含最小權限、秘密管理、去識別化分享原則與弱點回報方式。"
+---
+
 # 資安說明與威脅模型
 
 ## 1. 這個工具會碰到什麼
@@ -48,4 +53,4 @@
 - CI 對每個 PR 執行測試與秘密掃描（gitleaks）。
 - 第三方 GitHub Action 以 commit SHA 釘版；工作流程預設唯讀權限。
 - 修改轉接器的寫入路徑或任何守門檢查的 PR，需維護者親自審核。
-- 弱點回報方式見 [SECURITY.md](../../SECURITY.md)。
+- 弱點回報方式見 [SECURITY.md](https://github.com/polik18/school-it-toolkit/blob/main/SECURITY.md)。

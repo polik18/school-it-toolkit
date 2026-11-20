@@ -1,3 +1,8 @@
+---
+title: "本地 AI 工作站與機房 AI 助手"
+description: "在校內架設本地 LLM 伺服器（OpenAI 相容 API），讓機房電腦用 aider、Cursor 或 Claude Code 取得免費、隱私、不上雲的 AI 寫程式助手，適合資訊課程。"
+---
+
 # 🤖 本地 AI 工作站與機房 AI 助手
 
 > 在校內架一台「本地 LLM 伺服器」，讓全機房的電腦都能用免費、隱私、不需上雲的 AI 寫程式助手。

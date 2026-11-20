@@ -10,3 +10,11 @@ plugins:
 relative_links:
   enabled: true
   collections: false
+twitter:
+  card: summary_large_image
+author: 小黃老師
+defaults:
+  - scope:
+      path: ""
+    values:
+      image: /assets/social-preview.png

@@ -1,3 +1,8 @@
+---
+title: "v1 → v2 遷移指南"
+description: "School IT Toolkit v1 工具全部保留、不遷移也能用；本指南說明如何執行 setup/init.py、把 v1 清冊整併到 devices.csv，逐步導入 v2 的 sitk 框架與 AI 技能。"
+---
+
 # v1 → v2 遷移指南
 
 v1 的工具全部保留，**不遷移也能照常使用**。v2 是在旁邊新增 `sitk` 框架與 AI 技能。

@@ -1,3 +1,10 @@
+---
+title: "School IT Toolkit — English guide"
+description: "English guide to School IT Toolkit, an open-source framework that lets AI, even small local models, safely help run school networks and computers."
+lang: en
+image: /assets/social-preview-en.png
+---
+
 # 🏫 School IT Toolkit — English guide
 
 <p align="center">
@@ -8,7 +15,7 @@ Battle-tested probing, fleet-management, and **hard-won pitfall** know-how from 
 school IT admin — packaged so any school can adopt it fast. This toolkit
 **shares methods, not data** — given back to the community for free, not sold.
 
-> The most complete documentation is in Traditional Chinese under [`../zh-TW/`](../zh-TW/).
+> The most complete documentation is in Traditional Chinese under [`zh-TW` 文件](../).
 > The two flagship guides and this overview are available in English.
 
 ---
@@ -98,4 +105,4 @@ python3 setup/init-wizard.py
 ---
 
 ## ⚖️ License
-[MIT](../../LICENSE) — free for any school to use, modify, and redistribute.
+[MIT](https://github.com/polik18/school-it-toolkit/blob/main/LICENSE) — free for any school to use, modify, and redistribute.
