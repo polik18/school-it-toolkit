@@ -41,3 +41,5 @@ bin/sitk room 三年六班
 ```
 
 原始碼與完整說明：**[GitHub：polik18/school-it-toolkit](https://github.com/polik18/school-it-toolkit)**　｜　授權：MIT　｜　作者：小黃老師
+
+更多作者的教學與系統工具：**[Polik Projects](https://polik18.github.io/)**

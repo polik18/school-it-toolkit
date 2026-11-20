@@ -3,7 +3,7 @@ title: 教學｜用 AI 系管師工具包管好校園網路：功能介紹與一
 description: School IT Toolkit v2 完整教學——讓 AI（含本地小模型）安全協助校園網路與電腦維運：功能、原理、安裝、示範演練、建立自己的站點、接上 AI、批次維護與停電復電流程。
 ---
 
-[← 回到首頁](../index.md)　｜　[GitHub 原始碼](https://github.com/polik18/school-it-toolkit)
+[← 回到首頁](../index.md)　｜　更多作者作品：[Polik Projects](https://polik18.github.io/)　｜　[GitHub 原始碼](https://github.com/polik18/school-it-toolkit)
 
 ![School IT Toolkit](../assets/banner.png)
 
