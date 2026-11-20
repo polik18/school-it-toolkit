@@ -7,33 +7,39 @@
   {% seo %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
-  <link rel="stylesheet" href="{{ '/assets/css/sitk.css?v=20261120' | relative_url }}">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="{{ '/assets/css/sitk.css?v=20261120b' | relative_url }}">
 </head>
 {% assign is_home = false %}{% if page.url == '/' or page.url == '/index.html' %}{% assign is_home = true %}{% endif %}
 {% assign chars = content | strip_html | strip_newlines | size %}{% assign minutes = chars | divided_by: 900 | plus: 1 %}
 <body class="{% if is_home %}is-home{% else %}is-doc{% endif %}">
   <a class="skip" href="#content">跳到主要內容</a>
+  <div class="atmo" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
   <div class="bg-grid" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
 
   <header class="topbar">
     <nav class="topbar-inner" aria-label="主要導覽">
       <a class="brand" href="{{ '/' | relative_url }}"><span class="brand-mark" aria-hidden="true">&gt;_</span><span>School IT Toolkit<small>AI SYSADMIN · v2</small></span></a>
       <div class="topnav">
-        <a href="{{ '/' | relative_url }}"{% if is_home %} aria-current="page"{% endif %}>首頁</a>
+        <a href="{{ '/' | relative_url }}"{% if is_home %} aria-current="page"{% endif %}>工具包</a>
         <a href="{{ '/blog/ai-sysadmin-tutorial.html' | relative_url }}"{% if page.url contains 'tutorial' %} aria-current="page"{% endif %}>教學</a>
         <a href="{{ '/zh-TW/quickstart.html' | relative_url }}"{% if page.url contains 'quickstart' %} aria-current="page"{% endif %}>快速開始</a>
         <a href="{{ '/zh-TW/architecture.html' | relative_url }}"{% if page.url contains 'architecture' %} aria-current="page"{% endif %}>架構</a>
         <a href="{{ '/zh-TW/security.html' | relative_url }}"{% if page.url contains 'security' %} aria-current="page"{% endif %}>資安</a>
         <a class="topnav-gh" href="https://github.com/polik18/school-it-toolkit">GitHub ↗</a>
+        <a class="topnav-home" href="https://polik18.github.io/">⌂ 大首頁</a>
       </div>
     </nav>
   </header>
 
   <section class="hero" id="hero">
+    <canvas class="hero-art" aria-hidden="true"></canvas>
+    <div class="hero-floor" aria-hidden="true"></div>
     <div class="hero-inner">
       <p class="hero-eyebrow"><span>❯</span> {% if is_home %}open-source · MIT{% else %}{{ page.url | remove: '.html' | remove_first: '/' | replace: '/', ' / ' }}{% endif %}</p>
-      <h1 class="hero-title" id="hero-title">{% if is_home %}讓 AI 當你的<em>校園系管助手</em>{% else %}{{ page.title | split: '｜' | last }}{% endif %}</h1>
+      {% assign t_full = page.title | split: '｜' | last %}{% assign t_parts = t_full | split: '：' %}
+      <h1 class="hero-title" id="hero-title">{% if is_home %}讓 AI 當你的<em>校園系管助手</em>{% else %}<em>{{ t_parts[0] }}</em>{% if t_parts.size > 1 %}<span class="t-sub">{{ t_parts[1] }}</span>{% endif %}{% endif %}</h1>
       {% if page.description %}<p class="hero-desc">{{ page.description }}</p>{% endif %}
       <ul class="hero-meta">
         {% unless is_home %}<li><span>⏱</span> 約 {{ minutes }} 分鐘閱讀</li>{% endunless %}
@@ -41,6 +47,7 @@
         <li><span>⚖</span> MIT License</li>
         <li><span class="dot" aria-hidden="true"></span> Fail-Closed by design</li>
       </ul>
+      {% unless is_home %}<div class="hero-stats" data-min="{{ minutes }}" aria-label="本文概要"></div>{% endunless %}
       <div class="hero-term" aria-hidden="true">
         <div class="term-bar"><i></i><i></i><i></i><b>sitk — zsh</b></div>
         <pre><span class="dim"># 示範學校（不連任何設備）</span>
@@ -80,12 +87,12 @@
   </footer>
 
   <nav class="dock" aria-label="快速連結">
-    <a class="dock-home" href="{{ '/' | relative_url }}" title="回工具包首頁"><span aria-hidden="true">⌂</span><em>工具包首頁</em></a>
-    <a href="https://polik18.github.io/" title="Polik Projects 首頁"><span aria-hidden="true">P</span><em>Polik Projects</em></a>
-    <a href="https://github.com/polik18/school-it-toolkit" title="GitHub 原始碼"><span aria-hidden="true">⌥</span><em>GitHub</em></a>
+    <a class="dock-home" href="https://polik18.github.io/" title="回 Polik Projects 首頁"><span aria-hidden="true">⌂</span><em>回首頁 · Polik Projects</em></a>
+    <a class="dock-kit" href="{{ '/' | relative_url }}" title="工具包首頁"><span aria-hidden="true">&gt;_</span><em>工具包首頁</em></a>
+    <a class="dock-gh" href="https://github.com/polik18/school-it-toolkit" title="GitHub 原始碼"><span aria-hidden="true">⌥</span><em>GitHub 原始碼</em></a>
     <a class="dock-top" href="#hero" title="回到頂端"><span aria-hidden="true">↑</span><em>回到頂端</em></a>
   </nav>
 
-  <script src="{{ '/assets/js/sitk.js?v=20261120' | relative_url }}" defer></script>
+  <script src="{{ '/assets/js/sitk.js?v=20261120b' | relative_url }}" defer></script>
 </body>
 </html>
