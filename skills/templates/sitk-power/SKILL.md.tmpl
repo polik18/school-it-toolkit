@@ -1,0 +1,22 @@
+---
+name: sitk-power
+description: {{SCHOOL_NAME}} 計畫性停電關機與復電驗收：依 site.toml 定義的依賴順序分階段推進（網路 → 儲存 → 伺服器 → 端點），狀態可中斷續跑。由 sitk-sysadmin 路由進來時使用。
+version: 2.0.0
+---
+
+# {{SCHOOL_NAME}} 停電與復電（sitk-power）
+
+```bash
+{{SITK_CMD}} --json power plan --mode recover          # 先看有哪些階段
+{{SITK_CMD}} --json power run 1 --mode recover         # 一次一個階段，照順序
+{{SITK_CMD}} --json power done <階段> --mode recover   # 只有「人工階段」可以手動標記
+{{SITK_CMD}} --json power status --mode recover
+```
+
+規則：
+
+1. 前一階段沒通過，工具不會讓你跑下一階段——這是依賴順序（例如儲存還沒好就啟動伺服器，會卡住掛載）。
+2. `PHASE_FAILED` 會列出沒通過的設備；先查實體層再重跑該階段，不要跳過。
+3. `MANUAL` 階段把 `instruction` 原文交給管理員，等對方回報完成才執行 `power done`。
+4. 有 `action = "wake"` 的階段會喚醒設備，需要 `--apply`。
+5. 停電關機屬高風險流程，每個會關機的階段都要管理員明確同意。

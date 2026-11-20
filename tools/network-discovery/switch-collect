@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""
+switch-collect — 透過 telnet/ssh 連到清冊中的交換器，抓取設定與狀態到 reports/。
+Collect config/status from switches in the inventory via telnet/ssh into reports/.
+
+⚠️ 不同廠牌交換器的 CLI prompt 與指令不同。本工具用「通用 prompt」(>、#) 流程，
+   並從 config/network_credentials.env 讀帳密（**不含任何寫死的密碼**）。
+   若你的交換器 prompt/指令不同，調整下方 DEFAULT_COMMANDS 或 --commands。
+
+Different switch vendors have different CLI prompts/commands. This uses a generic
+prompt flow and reads credentials from config (NO hardcoded passwords).
+
+需求：系統需安裝 `expect`。Requires the `expect` binary.
+
+用法 / Usage:
+  tools/network-discovery/switch-collect            # 抓全部 telnet/ssh 交換器
+  tools/network-discovery/switch-collect --device CORE-SW
+"""
+import argparse
+import csv
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+NETDIR = schooltk.ROOT / "tools" / "network-discovery"
+SWITCHES_CSV = NETDIR / "inventory" / "switches.csv"
+RAW_DIR = schooltk.ROOT / "reports" / "switch-raw"
+
+# 常見「show」類指令；不同廠牌可能需調整
+DEFAULT_COMMANDS = {
+    "version": "show version",
+    "system": "show system",
+    "mac": "show mac address-table",
+    "arp": "show arp",
+    "lldp": "show lldp remote-device all",
+    "status": "show interfaces status",
+    "running-config": "show running-config",
+}
+
+
+def build_expect(ip, username, password, enable_password, commands, proto):
+    """通用 expect 腳本：偵測 User/Password 與 >(user) / #(enable) prompt。"""
+    spawn = f"spawn telnet {ip}" if proto == "telnet" else f"spawn ssh {username}@{ip}"
+    lines = ["set timeout 25", spawn, """
+expect {
+    -re "(User|Username|login):" { send "$env(SW_USER)\\r"; exp_continue }
+    -re "(P|p)assword:" { send "$env(SW_PASS)\\r"; exp_continue }
+    -re ">\\s*$" { send "enable\\r"; exp_continue }
+    -re "Password:.*enable" { send "$env(SW_ENABLE)\\r"; exp_continue }
+    -re "#\\s*$" { }
+    timeout { send_user "TIMEOUT_LOGIN\\n"; exit 1 }
+}
+send "terminal length 0\\r"
+expect -re "#\\s*$"
+"""]
+    for label, cmd in commands.items():
+        lines.append(f'send_user "===START_{label}===\\n"')
+        lines.append(f'send "{cmd}\\r"')
+        lines.append('expect -re "#\\\\s*$"')
+        lines.append(f'send_user "===END_{label}===\\n"')
+    lines.append('send "exit\\r"')
+    lines.append("expect eof")
+    return "\n".join(lines) + "\n"
+
+
+def collect(sw, creds, commands):
+    name, ip = sw["device_name"], sw.get("management_ip", "")
+    proto = (sw.get("login_method", "telnet") or "telnet").lower()
+    if not ip or ip == "unknown":
+        print(f"  跳過 {name}：無管理 IP")
+        return
+    print(f"連線 {name} ({ip}) via {proto} ...")
+    script = build_expect(ip, creds["user"], creds["pass"], creds["enable"], commands, proto)
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".expect") as tf:
+        tf.write(script)
+        path = tf.name
+    import os
+    env = {**os.environ, "SW_USER": creds["user"], "SW_PASS": creds["pass"], "SW_ENABLE": creds["enable"]}
+    try:
+        res = subprocess.run(["expect", path], text=True, capture_output=True, env=env, timeout=120)
+    except subprocess.TimeoutExpired:
+        print(f"  逾時 {name}")
+        return
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    for label in commands:
+        s, e = f"===START_{label}===", f"===END_{label}==="
+        if s in res.stdout and e in res.stdout:
+            body = res.stdout.split(s, 1)[1].split(e, 1)[0]
+            rows = body.splitlines()
+            if rows and commands[label] in rows[0]:
+                rows = rows[1:]
+            content = "\n".join(rows).strip()
+            if content:
+                fp = RAW_DIR / f"{name}_{label}.txt"
+                fp.write_text(content + "\n", encoding="utf-8")
+                print(f"  寫入 {fp.name} ({len(content)} bytes)")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Collect switch config/status into reports/.")
+    parser.add_argument("--device", help="只抓此 device_name")
+    args = parser.parse_args()
+
+    if not SWITCHES_CSV.exists():
+        print(f"找不到 {SWITCHES_CSV}。請從 switches.example.csv 複製並填入。", file=sys.stderr)
+        return 2
+    nc = schooltk.load_network_credentials()
+    creds = {
+        "user": nc.get("SWITCH_USERNAME", ""),
+        "pass": nc.get("SWITCH_PASSWORD", ""),
+        "enable": nc.get("SWITCH_ENABLE_PASSWORD", ""),
+    }
+    if not creds["user"] or not creds["pass"]:
+        print("缺少 SWITCH_USERNAME / SWITCH_PASSWORD（config/network_credentials.env）。", file=sys.stderr)
+        return 2
+
+    with SWITCHES_CSV.open(newline="", encoding="utf-8") as fh:
+        switches = list(csv.DictReader(fh))
+    for sw in switches:
+        if args.device and sw.get("device_name") != args.device:
+            continue
+        if (sw.get("login_method", "").lower() in ("telnet", "ssh")):
+            collect(sw, creds, DEFAULT_COMMANDS)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

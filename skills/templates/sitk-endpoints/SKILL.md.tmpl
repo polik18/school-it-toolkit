@@ -1,0 +1,34 @@
+---
+name: sitk-endpoints
+description: {{SCHOOL_NAME}} 教室電腦維運：連線狀態、系統資訊、Wake-on-LAN 喚醒，以及全校或單一空間的批次維護（可中斷續跑）。由 sitk-sysadmin 路由進來時使用。
+version: 2.0.0
+---
+
+# {{SCHOOL_NAME}} 教室電腦（sitk-endpoints）
+
+## 單台查詢與喚醒
+
+```bash
+{{SITK_CMD}} --json endpoint status <電腦或空間>
+{{SITK_CMD}} --json endpoint facts <電腦>      # console_user 有值 = 有人在用，不要打擾
+{{SITK_CMD}} --json endpoint wake <電腦>       # 預覽；同意後加 --apply，約 60 秒後再查 status
+```
+
+## 批次維護（狀態機）
+
+```bash
+{{SITK_CMD}} --json batch init --run-id <唯一名稱> --kind endpoint [--space <空間>]
+{{SITK_CMD}} --json batch next --run-id <名稱>        # 取得下一台；RESUME 代表上次中斷在這台
+# …對該台做事，並用 endpoint status / facts 實測確認…
+{{SITK_CMD}} --json batch complete --run-id <名稱> --item <電腦> --verified
+{{SITK_CMD}} --json batch fail --run-id <名稱> --item <電腦> --error "<原因>"
+{{SITK_CMD}} --json batch status --run-id <名稱>
+{{SITK_CMD}} --json batch retry-failed --run-id <名稱>
+```
+
+規則：
+
+1. 一次只處理 `next` 給你的那一台，不自行跳號或猜進度。
+2. 沒有實測回讀就不能 `complete`（工具會擋）。
+3. 同一空間連續多台失敗，先懷疑實體層（電源、排插、網路線），停下來回報。
+4. 上課時段（{{TEACHING_HOURS}}）不做會跳出畫面、登出或重開機的動作。

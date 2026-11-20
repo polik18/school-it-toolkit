@@ -1,0 +1,56 @@
+---
+name: sitk-network
+description: {{SCHOOL_NAME}} 網路設備維運：交換器（狀態、MAC 找埠、LLDP、組態備份）、無線 AP（查詢、離線、重開）、防火牆（死人開關套用）、DNS/DHCP 查詢。由 sitk-sysadmin 路由進來時使用。
+version: 2.0.0
+---
+
+# {{SCHOOL_NAME}} 網路設備（sitk-network）
+
+先讀 `sitk-sysadmin` 的天條。所有指令加 `--json`。
+
+## 交換器（唯讀）
+
+```bash
+{{SITK_CMD}} --json switch status <交換器>
+{{SITK_CMD}} --json switch find-mac <MAC>          # 某台電腦接在哪個埠
+{{SITK_CMD}} --json switch lldp <交換器>
+{{SITK_CMD}} --json switch backup <交換器>          # 備份檔含敏感資訊，勿外傳
+```
+
+- `find-mac` 若在多台交換器都看到同一 MAC，非上聯埠的那筆才是實體位置。
+- 本工具不提供交換器組態寫入；需要改設定時，產出變更說明交給管理員親自執行。
+
+## 無線 AP
+
+```bash
+{{SITK_CMD}} --json wifi aps [--offline]
+{{SITK_CMD}} --json wifi clients [<AP 或空間>]
+{{SITK_CMD}} --json wifi reboot <AP 或空間>          # 先看 DRY_RUN，同意後加 --apply
+```
+
+重開 AP 會讓該空間的 Wi-Fi 使用者斷線；上課時段先徵詢。`unregistered` 列出控制器上有、台帳沒有的 AP，請回報給管理員補台帳。
+
+## 防火牆（高風險）
+
+```bash
+{{SITK_CMD}} --json firewall status
+{{SITK_CMD}} --json firewall lint
+{{SITK_CMD}} --json firewall apply                    # 只會回 DRY_RUN 預覽
+{{SITK_CMD}} --json firewall apply --apply --confirm <防火牆名稱> --timeout 60
+{{SITK_CMD}} --json firewall persist --apply --confirm <防火牆名稱>
+```
+
+- `apply` 會先語法預檢、備份、啟動死人開關，再用新連線當探針；探針失敗會自動回滾。
+- 回傳 `ROLLBACK_PENDING` 時**不要再做任何操作**，等計時器回滾後回報。
+- 確認服務都正常後才 `persist`；兩步都要管理員明確同意。
+
+## DNS / DHCP
+
+```bash
+{{SITK_CMD}} --json dns search <關鍵字>
+{{SITK_CMD}} --json dhcp search <IP|MAC|主機名>
+{{SITK_CMD}} --json dns reload                        # 預覽；同意後加 --apply
+```
+
+- 網站連不上（HTTP 000、逾時）時，**先查 DNS 有沒有這筆紀錄**，不要依服務名稱猜網域。
+- 關鍵字只能是英數與 `. : _ -`，這是刻意的安全限制。

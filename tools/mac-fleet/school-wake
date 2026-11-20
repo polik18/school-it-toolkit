@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""
+school-wake — 用 Wake-on-LAN 喚醒清冊中的機器。
+Wake hosts from the inventory via Wake-on-LAN magic packets.
+
+地雷避法（見 pitfalls #5）：管理機若有多張虛擬網卡（VPN/bridge），直接廣播可能
+選錯介面而 No route to host。用 --bind-ip 綁定實體有線網卡 IP 強制由它送出。
+
+用法 / Usage:
+  tools/mac-fleet/school-wake --group LAB-A
+  tools/mac-fleet/school-wake --group all --broadcast 192.0.2.255 --bind-ip 192.0.2.5
+"""
+import argparse
+import socket
+import sys
+from pathlib import Path
+
+for _p in Path(__file__).resolve().parents:
+    if (_p / "lib" / "schooltk.py").exists():
+        sys.path.insert(0, str(_p / "lib"))
+        break
+import schooltk  # noqa: E402
+
+
+def normalize_mac(value):
+    hexchars = "".join(ch for ch in (value or "").lower() if ch in "0123456789abcdef")
+    return hexchars if len(hexchars) == 12 else ""
+
+
+def send_magic_packet(mac, broadcasts, unicast_ip, ports, repeat, bind_ip):
+    packet = bytes.fromhex("ff" * 6 + mac * 16)
+    targets = list(broadcasts) + ([unicast_ip] if unicast_ip else [])
+    sent = 0
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        if bind_ip:
+            sock.bind((bind_ip, 0))  # 強制由實體網卡送出（pitfalls #5）
+        for _ in range(repeat):
+            for dest in targets:
+                for port in ports:
+                    try:
+                        sock.sendto(packet, (dest, port))
+                        sent += 1
+                    except OSError:
+                        pass
+    return sent
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Wake Macs from the inventory via WoL.")
+    parser.add_argument("--group", action="append", default=[], help="清單名或 all（可重複）。")
+    parser.add_argument("--name", action="append", default=[], help="單機名稱（可重複）。")
+    parser.add_argument("--broadcast", action="append", default=["255.255.255.255"], help="廣播位址（可重複）。")
+    parser.add_argument("--bind-ip", default="", help="綁定送出用的本機實體網卡 IP（多網卡時建議）。")
+    parser.add_argument("--port", action="append", type=int, default=[9, 7])
+    parser.add_argument("--repeat", type=int, default=3)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    cfg = schooltk.load_config()
+    rows = schooltk.load_hosts(cfg)
+    group_set = {g.lower() for g in args.group}
+    name_set = {n.lower() for n in args.name}
+    if not group_set and not name_set:
+        group_set = {"all"}
+
+    seen, targets = set(), []
+    for row in rows:
+        group = row.get("list", "")
+        name = row.get("name", "")
+        if group_set and "all" not in group_set and group.lower() not in group_set:
+            continue
+        if name_set and name.lower() not in name_set:
+            continue
+        mac = normalize_mac(row.get("hardware_address", ""))
+        if not mac or mac in seen:
+            continue
+        seen.add(mac)
+        targets.append((group, name, mac, row.get("ip", "")))
+
+    if not targets:
+        print("找不到具備 hardware_address 的喚醒目標。", file=sys.stderr)
+        return 1
+
+    for group, name, mac, ip in targets:
+        disp = ":".join(mac[i:i + 2] for i in range(0, 12, 2))
+        if args.dry_run:
+            print(f"DRY {group} {name} {ip} {disp}")
+        else:
+            n = send_magic_packet(mac, args.broadcast, ip, args.port, args.repeat, args.bind_ip)
+            print(f"WAKE {group} {name} {ip} {disp} packets={n}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

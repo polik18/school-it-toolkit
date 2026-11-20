@@ -1,0 +1,80 @@
+# 範例學校：完全虛構。網段使用 RFC 5737 文件專用位址，MAC 使用 RFC 7042 文件位址。
+# 真實學校請複製到 site/site.toml（已被 .gitignore 排除）後修改。
+
+[school]
+name = "示範國小"
+timezone = "Asia/Taipei"
+
+[scope]
+# 工具只會對這些網段內的位址動作；其他一律 OUT_OF_SCOPE
+allowed_networks = ["192.0.2.0/24", "198.51.100.0/24"]
+
+[inventory]
+devices = "inventory/devices.csv"
+spaces = "inventory/spaces.csv"
+
+[secrets]
+backend = "env-file"          # keychain（macOS 建議）| env-file | env
+env_file = "secrets.env"      # 權限必須 0600，永不提交
+
+[state]
+dir = "state"
+
+[backup]
+dir = "backups"
+
+[audit]
+log = "logs/audit.jsonl"
+
+[policy]
+# 這些領域的 --apply 還必須加 --confirm <目標名稱>
+confirm_required = ["firewall", "core_switch", "power"]
+# 教學時段（端點類操作會提醒；排程任務應避開）
+teaching_hours = ["08:00-12:00", "13:20-16:00"]
+
+[adapters.switch]
+driver = "mock"               # 真實環境例：ssh_cli（另設 profile）
+[adapters.wifi]
+driver = "mock"               # 真實環境例：fortigate
+controller = "fw-wifi-01"
+[adapters.firewall]
+driver = "mock"               # 真實環境例：linux_iptables
+device = "fw-core-01"
+[adapters.dnsdhcp]
+driver = "mock"               # 真實環境例：bind9_isc
+device = "srv-dns-01"
+[adapters.endpoint]
+driver = "mock"               # 真實環境例：macos
+wol_broadcast = "198.51.100.255"
+[adapters.voip]
+driver = "mock"               # 真實環境例：grandstream
+
+[[power.recover]]
+name = "核心網路"
+match = { kind = "switch", tag = "core" }
+check = "ping"
+
+[[power.recover]]
+name = "防火牆與伺服器"
+match = { kind = "firewall" }
+check = "ping"
+
+[[power.recover]]
+name = "確認儲存設備"
+manual = "請登入 NAS 管理頁確認磁碟陣列正常，完成後執行 sitk power done 3 --mode recover"
+
+[[power.recover]]
+name = "教室電腦喚醒"
+match = { kind = "endpoint" }
+action = "wake"
+wait_seconds = 1
+check = "ping"
+
+[[power.shutdown]]
+name = "通知與排程確認"
+manual = "確認已公告停電時段、ARD／排程任務已暫停"
+
+# 本校專屬天條：會加進產生的 sitk-sysadmin 技能（範例）
+[[tenets]]
+title = "電腦教室交換器仍在調試"
+rule = "sw-b3pc-01 為 STAGING，電腦教室網路問題請回報管理員，不得以其查詢結果判斷現況。"

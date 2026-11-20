@@ -1,0 +1,15 @@
+name,kind,ip,mac,model,space,status,aliases,tags
+sw-core-01,switch,192.0.2.2,00:00:5e:00:53:01,示範核心交換器,NET,ACTIVE,核心交換器,core
+sw-b3pc-01,switch,192.0.2.3,00:00:5e:00:53:02,示範教室交換器,B3PC,STAGING,電腦教室交換器,
+fw-core-01,firewall,192.0.2.1,00:00:5e:00:53:03,示範防火牆,NET,ACTIVE,核心防火牆,
+fw-wifi-01,wifi_controller,192.0.2.4,00:00:5e:00:53:04,示範無線控制器,NET,ACTIVE,無線控制器,
+srv-dns-01,dnsdhcp,192.0.2.10,00:00:5e:00:53:05,示範伺服器,NET,ACTIVE,DNS伺服器,
+ap-a101,ap,198.51.100.11,00:00:5e:00:53:11,示範 AP,A101,ACTIVE,FP-A101,
+ap-a306,ap,198.51.100.12,00:00:5e:00:53:12,示範 AP,A306,ACTIVE,FP-A306,mock-offline
+ap-b3pc,ap,198.51.100.13,00:00:5e:00:53:13,示範 AP,B3PC,ACTIVE,FP-B3PC,
+pc-a101,endpoint,198.51.100.101,00:00:5e:00:53:21,示範桌機,A101,ACTIVE,一年一班電腦,
+pc-a306,endpoint,198.51.100.106,00:00:5e:00:53:22,示範桌機,A306,ACTIVE,三年六班電腦,
+pc-b3pc-01,endpoint,198.51.100.131,00:00:5e:00:53:31,示範桌機,B3PC,ACTIVE,電腦教室01,
+pc-b3pc-02,endpoint,198.51.100.132,00:00:5e:00:53:32,示範桌機,B3PC,ACTIVE,電腦教室02,mock-offline
+ph-a101,phone,198.51.100.201,00:00:5e:00:53:41,示範 IP 話機,A101,ACTIVE,一年一班電話,
+ph-a306,phone,198.51.100.206,00:00:5e:00:53:42,示範 IP 話機,A306,ACTIVE,三年六班電話,

@@ -1,0 +1,18 @@
+---
+name: sitk-voip
+description: {{SCHOOL_NAME}} 網路電話維運：註冊狀態查詢、遠端重開。由 sitk-sysadmin 路由進來時使用。
+version: 2.0.0
+---
+
+# {{SCHOOL_NAME}} 網路電話（sitk-voip）
+
+```bash
+{{SITK_CMD}} --json voip status <話機或空間>    # registered=false 代表沒註冊上 SIP 伺服器
+{{SITK_CMD}} --json voip reboot <話機或空間>    # 預覽；同意後加 --apply（通話會中斷）
+```
+
+排查順序：
+
+1. `voip status` 看是否註冊；`warning` 提示仍用出廠密碼時，回報管理員更換。
+2. 沒註冊：先 `switch find-mac <話機 MAC>` 確認接在哪個埠、`dhcp search <MAC>` 確認有拿到 IP。
+3. 確認網路正常後才重開話機；重開後再查一次 `voip status`。
