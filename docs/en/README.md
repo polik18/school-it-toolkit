@@ -3,6 +3,7 @@ title: "School IT Toolkit — English guide"
 description: "English guide to School IT Toolkit, an open-source framework that lets AI, even small local models, safely help run school networks and computers."
 lang: en
 image: /assets/social-preview-en.png
+permalink: /en/
 ---
 
 # 🏫 School IT Toolkit — English guide
