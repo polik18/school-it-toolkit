@@ -1,0 +1,12 @@
+title: School IT Toolkit
+description: AI 系管師工具包——讓 AI（含本地小模型）安全協助校園網路與電腦維運
+theme: jekyll-theme-cayman
+lang: zh-TW
+baseurl: /school-it-toolkit
+url: https://polik18.github.io
+plugins:
+  - jekyll-relative-links
+  - jekyll-seo-tag
+relative_links:
+  enabled: true
+  collections: false

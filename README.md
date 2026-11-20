@@ -9,6 +9,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+> 🌐 **網站：[polik18.github.io/school-it-toolkit](https://polik18.github.io/school-it-toolkit/)**　｜　📖 **[教學文章：功能介紹與一步一步上手](https://polik18.github.io/school-it-toolkit/blog/ai-sysadmin-tutorial.html)**
+
 ---
 
 ## ✨ v2 有什麼新東西 / What's new in v2
